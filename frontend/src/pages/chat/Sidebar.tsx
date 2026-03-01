@@ -1,18 +1,27 @@
 import { useAuth } from "@/context/AuthContext";
-import { LogOut, MessageSquare, X } from "lucide-react";
+import type { ChatSession } from "@/types";
+import { Loader2, LogOut, MessageSquare, Trash2, X } from "lucide-react";
 import NewChatButton from "./NewChatButton";
 
 interface Props {
+  sessions: ChatSession[];
+  activeSessionId: number | null;
+  isLoading: boolean;
+  onSelectSession: (id: number) => void;
+  onNewChat: () => void;
+  onDeleteSession: (id: number) => void;
   onClose: () => void;
 }
 
-const mockSessions = [
-  { id: "1", title: "How does React work?" },
-  { id: "2", title: "Python sorting algorithms" },
-  { id: "3", title: "CSS Grid vs Flexbox" },
-];
-
-const Sidebar = ({ onClose }: Props) => {
+const Sidebar = ({
+  sessions,
+  activeSessionId,
+  isLoading,
+  onSelectSession,
+  onNewChat,
+  onDeleteSession,
+  onClose,
+}: Props) => {
   const { user, logout } = useAuth();
 
   return (
@@ -23,7 +32,6 @@ const Sidebar = ({ onClose }: Props) => {
           <span className="text-ink-primary text-sm font-semibold tracking-tight">
             AI Chat Assistant
           </span>
-          {/* Close button — only visible on mobile */}
           <button
             onClick={onClose}
             className="md:hidden text-ink-muted hover:text-ink-primary transition-colors p-1 rounded-lg hover:bg-surface-overlay"
@@ -31,7 +39,7 @@ const Sidebar = ({ onClose }: Props) => {
             <X size={16} />
           </button>
         </div>
-        <NewChatButton onClick={() => {}} />
+        <NewChatButton onClick={onNewChat} />
       </div>
 
       {/* Sessions list */}
@@ -39,19 +47,44 @@ const Sidebar = ({ onClose }: Props) => {
         <p className="text-ink-muted text-[10px] font-semibold uppercase tracking-widest px-3 mb-2">
           Recent
         </p>
-        <ul className="flex flex-col gap-0.5">
-          {mockSessions.map((session) => (
-            <li key={session.id}>
-              <button className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-ink-secondary hover:text-ink-primary hover:bg-surface-overlay text-sm transition-all duration-150 text-left group">
-                <MessageSquare
-                  size={13}
-                  className="shrink-0 text-ink-muted group-hover:text-ink-secondary transition-colors"
-                />
-                <span className="truncate">{session.title}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 size={16} className="text-ink-muted animate-spin" />
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="text-ink-muted text-xs text-center py-8 px-3">No conversations yet</p>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {sessions.map((session) => (
+              <li key={session.id}>
+                <button
+                  onClick={() => onSelectSession(session.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 text-left group ${
+                    activeSessionId === session.id
+                      ? "bg-surface-overlay text-ink-primary"
+                      : "text-ink-secondary hover:text-ink-primary hover:bg-surface-overlay"
+                  }`}
+                >
+                  <MessageSquare
+                    size={13}
+                    className="shrink-0 text-ink-muted group-hover:text-ink-secondary transition-colors"
+                  />
+                  <span className="truncate flex-1">{session.title}</span>
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteSession(session.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-ink-muted hover:text-danger transition-all duration-150 shrink-0 p-0.5 rounded"
+                  >
+                    <Trash2 size={12} />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </nav>
 
       {/* User profile + logout */}

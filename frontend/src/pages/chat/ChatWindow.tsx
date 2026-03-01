@@ -1,5 +1,18 @@
 import { useAuth } from "@/context/AuthContext";
-import { Menu, Sparkles } from "lucide-react";
+import type { Message } from "@/types";
+import { ArrowUp, Loader2, Menu, Sparkles, Square } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import MessageBubble from "./MessageBubble";
+
+interface Props {
+  messages: Message[];
+  isStreaming: boolean;
+  streamingContent: string;
+  isLoadingMessages: boolean;
+  onSendMessage: (content: string) => void;
+  onStopStreaming: () => void;
+  onMenuClick: () => void;
+}
 
 const suggestions = [
   "Explain how React hooks work",
@@ -8,12 +21,41 @@ const suggestions = [
   "Help me debug my JavaScript code",
 ];
 
-interface Props {
-  onMenuClick: () => void;
-}
-
-const ChatWindow = ({ onMenuClick }: Props) => {
+const ChatWindow = ({
+  messages,
+  isStreaming,
+  streamingContent,
+  isLoadingMessages,
+  onSendMessage,
+  onStopStreaming,
+  onMenuClick,
+}: Props) => {
   const { user } = useAuth();
+  const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-scroll on new messages or streaming
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, streamingContent]);
+
+  const handleSend = () => {
+    const trimmed = input.trim();
+    if (!trimmed || isStreaming) return;
+    onSendMessage(trimmed);
+    setInput("");
+    textareaRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const isEmpty = messages.length === 0 && !isLoadingMessages;
 
   return (
     <div className="flex-1 min-w-0 h-full bg-surface-base flex flex-col">
@@ -31,7 +73,7 @@ const ChatWindow = ({ onMenuClick }: Props) => {
         {user?.profile_picture ? (
           <img
             src={user.profile_picture}
-            alt={user.full_name}
+            alt={user.full_name ?? ""}
             className="w-7 h-7 rounded-full object-cover ring-1 ring-line-strong"
           />
         ) : (
@@ -41,31 +83,79 @@ const ChatWindow = ({ onMenuClick }: Props) => {
         )}
       </header>
 
-      {/* Empty / welcome state */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 px-4 sm:px-8 py-12 overflow-y-auto">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-surface-elevated border border-line-strong flex items-center justify-center">
-            <Sparkles size={20} className="text-ink-secondary" />
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto">
+        {isLoadingMessages ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 size={20} className="text-ink-muted animate-spin" />
           </div>
-          <div>
-            <h1 className="text-ink-primary text-xl sm:text-2xl font-semibold tracking-tight">
-              What can I help you with?
-            </h1>
-            <p className="text-ink-muted text-sm mt-1">Start a conversation or pick a suggestion</p>
+        ) : isEmpty ? (
+          /* Empty / welcome state */
+          <div className="flex flex-col items-center justify-center h-full gap-6 px-4 sm:px-8 py-12">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-surface-elevated border border-line-strong flex items-center justify-center">
+                <Sparkles size={20} className="text-ink-secondary" />
+              </div>
+              <div>
+                <h1 className="text-ink-primary text-xl sm:text-2xl font-semibold tracking-tight">
+                  What can I help you with?
+                </h1>
+                <p className="text-ink-muted text-sm mt-1">
+                  Start a conversation or pick a suggestion
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-xl">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => onSendMessage(s)}
+                  className="px-4 py-3 rounded-xl bg-surface-raised border border-line text-ink-secondary hover:text-ink-primary hover:border-line-strong hover:bg-surface-elevated text-sm text-left transition-all duration-200"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Message list */
+          <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
+            {messages.map((msg) => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
 
-        {/* Suggestion chips */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-xl">
-          {suggestions.map((suggestion) => (
-            <button
-              key={suggestion}
-              className="px-4 py-3 rounded-xl bg-surface-raised border border-line text-ink-secondary hover:text-ink-primary hover:border-line-strong hover:bg-surface-elevated text-sm text-left transition-all duration-200"
-            >
-              {suggestion}
-            </button>
-          ))}
-        </div>
+            {/* Streaming assistant bubble */}
+            {isStreaming && streamingContent && (
+              <MessageBubble
+                message={{
+                  id: -1,
+                  role: "assistant",
+                  content: streamingContent,
+                  provider: "",
+                  model_used: "",
+                  created_at: "",
+                }}
+                isStreaming
+              />
+            )}
+
+            {/* Thinking indicator */}
+            {isStreaming && !streamingContent && (
+              <div className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-surface-overlay border border-line flex items-center justify-center shrink-0">
+                  <Sparkles size={12} className="text-ink-secondary" />
+                </div>
+                <div className="flex items-center gap-1.5 px-4 py-3 bg-surface-raised border border-line rounded-2xl rounded-tl-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-ink-muted animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-ink-muted animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-ink-muted animate-bounce [animation-delay:300ms]" />
+                </div>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+        )}
       </div>
 
       {/* Input bar */}
@@ -73,23 +163,32 @@ const ChatWindow = ({ onMenuClick }: Props) => {
         <div className="max-w-2xl mx-auto">
           <div className="flex items-end gap-3 bg-surface-raised border border-line rounded-2xl px-4 py-3 focus-within:border-line-strong transition-colors duration-200">
             <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Message AI Chat Assistant…"
               rows={1}
-              className="flex-1 bg-transparent text-ink-primary text-sm placeholder:text-ink-muted resize-none outline-none min-h-5 max-h-40"
+              disabled={isStreaming}
+              className="flex-1 bg-transparent text-ink-primary text-sm placeholder:text-ink-muted resize-none outline-none min-h-[20px] max-h-40 disabled:opacity-50"
             />
-            <button className="w-8 h-8 rounded-xl bg-accent hover:bg-accent-hover flex items-center justify-center transition-colors duration-200 shrink-0">
-              <svg
-                viewBox="0 0 24 24"
-                className="w-4 h-4"
-                fill="none"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                stroke="var(--color-surface-base)"
+            {isStreaming ? (
+              <button
+                onClick={onStopStreaming}
+                className="w-8 h-8 rounded-xl bg-surface-active hover:bg-surface-overlay border border-line flex items-center justify-center transition-colors duration-200 shrink-0"
+                title="Stop generating"
               >
-                <path d="M12 5l0 14M5 12l7-7 7 7" />
-              </svg>
-            </button>
+                <Square size={14} className="text-ink-primary" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim()}
+                className="w-8 h-8 rounded-xl bg-accent hover:bg-accent-hover flex items-center justify-center transition-colors duration-200 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ArrowUp size={16} stroke="var(--color-surface-base)" strokeWidth={2.5} />
+              </button>
+            )}
           </div>
           <p className="text-center text-ink-muted text-xs mt-2">
             AI can make mistakes — verify important information.
