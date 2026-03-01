@@ -46,6 +46,7 @@ const ChatPage = () => {
         isStreaming={chat.isStreaming}
         streamingContent={chat.streamingContent}
         isLoadingMessages={chat.isLoadingMessages}
+        streamError={chat.streamError}
         onSendMessage={chat.sendMessage}
         onStopStreaming={chat.stopStreaming}
         onMenuClick={() => setSidebarOpen(true)}
