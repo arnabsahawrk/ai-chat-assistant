@@ -16,10 +16,10 @@ interface Props {
 }
 
 const suggestions = [
-  "Explain how React hooks work",
-  "Write a Python function to sort a list",
-  "What's the difference between REST and GraphQL?",
-  "Help me debug my JavaScript code",
+  "Explain something fascinating in simple words",
+  "Give me one idea that could improve my life",
+  "Teach me something I probably don't know",
+  "Ask me a deep question that makes me think",
 ];
 
 const ChatWindow = ({
