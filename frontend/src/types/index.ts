@@ -20,16 +20,31 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+export interface Message {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  provider: string;
+  model_used: string;
+  created_at: string;
+}
+
 export interface ChatSession {
-  id: string;
+  id: number;
   title: string;
+  last_message: string | null;
+  message_count: number;
   created_at: string;
   updated_at: string;
 }
 
-export interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  created_at: string;
+export interface ChatSessionDetail extends ChatSession {
+  messages: Message[];
 }
+
+// SSE event types
+export type SSEEvent =
+  | { type: "user_message"; data: Message }
+  | { type: "chunk"; content: string }
+  | { type: "done"; data: Message }
+  | { type: "error"; message: string };
