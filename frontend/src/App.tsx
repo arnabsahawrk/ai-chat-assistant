@@ -1,5 +1,6 @@
 import { useAuth } from "@/context/AuthContext";
 import LoginPage from "@/pages/auth/LoginPage";
+import ChatPage from "@/pages/chat/ChatPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 const App = () => {
@@ -13,9 +14,7 @@ const App = () => {
       />
       <Route
         path="/chat"
-        element={
-          isAuthenticated ? <div>Chat page coming soon</div> : <Navigate to="/login" replace />
-        }
+        element={isAuthenticated ? <ChatPage /> : <Navigate to="/login" replace />}
       />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

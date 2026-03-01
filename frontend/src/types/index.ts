@@ -1,7 +1,11 @@
 export interface User {
-  id: number;
+  pk: number;
+  username: string;
   email: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  profile_picture: string | null;
+  full_name: string;
 }
 
 export interface AuthTokens {
