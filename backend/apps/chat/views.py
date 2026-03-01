@@ -1,8 +1,11 @@
+import json
+from collections.abc import Generator
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.http import StreamingHttpResponse
 
 from .models import ChatSession, Message
 from .serializers import (
@@ -10,6 +13,7 @@ from .serializers import (
     ChatSessionDetailSerializer,
     MessageSerializer,
 )
+from .ai.router import stream_ai_response, build_messages
 
 
 class ChatSessionListCreateView(generics.ListCreateAPIView):
@@ -67,16 +71,69 @@ class SendMessageView(APIView):
             role=Message.Role.USER,
             content=content,
         )
+        session.save()  # touch updated_at
 
-        # Touch session updated_at
-        session.save()
+        # Build context window
+        messages = build_messages(session, content)
 
-        # AI response will be wired in Phase 2
-        # For now return the saved user message + placeholder
-        return Response(
-            {
-                "user_message": MessageSerializer(user_message).data,
-                "assistant_message": None,  # Phase 2
-            },
-            status=status.HTTP_201_CREATED,
+        # SSE streaming response
+        def event_stream() -> Generator[bytes, None, None]:
+            full_response = []
+
+            # Send user message metadata first
+            yield (
+                f"data: {json.dumps({'type': 'user_message', 'data': MessageSerializer(user_message).data})}\n\n".encode(
+                    "utf-8"
+                )
+            )
+
+            try:
+                stream, provider_name, model_name = stream_ai_response(messages)
+
+                for chunk in stream:
+                    full_response.append(chunk)
+                    yield (
+                        f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n".encode(
+                            "utf-8"
+                        )
+                    )
+
+                # Save complete assistant message to DB
+                assistant_content = "".join(full_response)
+                assistant_message = Message.objects.create(
+                    session=session,
+                    role=Message.Role.ASSISTANT,
+                    content=assistant_content,
+                    provider=provider_name,
+                    model_used=model_name,
+                )
+                session.save()
+
+                # Send done event with full assistant message
+                yield (
+                    f"data: {json.dumps({'type': 'done', 'data': MessageSerializer(assistant_message).data})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+
+            except RuntimeError as e:
+                yield (
+                    f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+
+            except Exception:
+                yield (
+                    f"data: {json.dumps({'type': 'error', 'message': 'An unexpected error occurred.'})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type="text/event-stream",
         )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"  # important for Nginx/Render
+        return response
