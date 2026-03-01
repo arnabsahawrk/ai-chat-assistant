@@ -6,5 +6,5 @@ from decouple import config
 
 class GoogleLoginView(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    callback_url = config("GOOGLE_CALLBACK_URL")
+    callback_url = config("FRONTEND_URL")
     client_class = OAuth2Client
