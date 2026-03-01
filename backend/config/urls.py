@@ -21,6 +21,7 @@ from django.urls import include, path
 from config import settings
 
 urlpatterns = [
+    path("", include("apps.core.urls")),
     path("api/auth/", include("apps.accounts.urls")),
 ]
 
