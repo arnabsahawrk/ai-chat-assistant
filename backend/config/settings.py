@@ -200,3 +200,14 @@ REST_AUTH = {
     "JWT_AUTH_HTTPONLY": False,
     "USER_DETAILS_SERIALIZER": "apps.accounts.serializers.CustomUserDetailsSerializer",
 }
+
+# AI Providers
+GROQ_API_KEY = config("GROQ_API_KEY")
+GEMINI_API_KEY = config("GEMINI_API_KEY")
+MISTRAL_API_KEY = config("MISTRAL_API_KEY")
+
+# AI Routing
+AI_CONTEXT_WINDOW = 10  # last N messages sent as history
+AI_DAILY_LIMIT_GROQ = 14000  # requests/day
+AI_DAILY_LIMIT_GEMINI = 1400  # requests/day (buffer below 1500)
+AI_DAILY_LIMIT_MISTRAL = 500  # conservative limit
