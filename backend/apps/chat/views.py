@@ -13,7 +13,7 @@ from .serializers import (
     ChatSessionDetailSerializer,
     MessageSerializer,
 )
-from .ai.router import stream_ai_response, build_messages
+from .ai.router import stream_ai_response, build_messages, generate_title
 
 
 class ChatSessionListCreateView(generics.ListCreateAPIView):
@@ -86,6 +86,20 @@ class SendMessageView(APIView):
                     "utf-8"
                 )
             )
+
+            # Auto-title on first user message
+            user_message_count = Message.objects.filter(
+                session=session, role=Message.Role.USER
+            ).count()
+            if user_message_count == 1 and session.title == "New Chat":
+                title = generate_title(content)
+                session.title = title
+                session.save(update_fields=["title"])
+                yield (
+                    f"data: {json.dumps({'type': 'title', 'title': title, 'session_id': str(session.pk)})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
 
             try:
                 stream, provider_name, model_name = stream_ai_response(messages)

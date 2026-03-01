@@ -98,3 +98,57 @@ def build_messages(session, current_content: str) -> list[ChatMessage]:
 
     current_message: ChatMessage = {"role": "user", "content": current_content}
     return [system_prompt] + history + [current_message]
+
+
+def generate_title(user_message: str) -> str:
+    prompt = (
+        "Generate a short, descriptive title (4-6 words max) for a chat that starts with this message. "
+        "Return ONLY the title, no quotes, no punctuation at the end.\n\n"
+        f"Message: {user_message}"
+    )
+
+    provider = pick_provider()
+    if provider is None:
+        return "New Chat"
+
+    try:
+        if provider == "groq":
+            from groq import Groq
+
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=20,
+                temperature=0.5,
+            )
+            content = response.choices[0].message.content
+            return content.strip() if content else "New Chat"
+
+        elif provider == "gemini":
+            from google.genai import Client
+
+            client = Client(api_key=settings.GEMINI_API_KEY)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+            )
+            return response.text.strip() if response.text else "New Chat"
+
+        elif provider == "mistral":
+            from mistralai import Mistral
+
+            client = Mistral(api_key=settings.MISTRAL_API_KEY)
+            response = client.chat.complete(
+                model="mistral-small-latest",
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=20,
+                temperature=0.5,
+            )
+            content = response.choices[0].message.content if response.choices else None
+            return content.strip() if isinstance(content, str) else "New Chat"
+
+    except Exception:
+        pass
+
+    return "New Chat"
