@@ -10,6 +10,7 @@ export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamError, setStreamError] = useState<string | null>(null);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -26,6 +27,7 @@ export const useChat = () => {
 
   const selectSession = useCallback(async (sessionId: number) => {
     setActiveSessionId(sessionId);
+    setStreamError(null);
     setIsLoadingMessages(true);
     try {
       const detail = await getSession(sessionId);
@@ -40,6 +42,7 @@ export const useChat = () => {
     setSessions((prev) => [session, ...prev]);
     setActiveSessionId(session.id);
     setMessages([]);
+    setStreamError(null);
     return session;
   }, []);
 
@@ -50,6 +53,7 @@ export const useChat = () => {
       if (activeSessionId === sessionId) {
         setActiveSessionId(null);
         setMessages([]);
+        setStreamError(null);
       }
     },
     [activeSessionId],
@@ -59,16 +63,32 @@ export const useChat = () => {
     async (content: string) => {
       if (!tokens?.access || isStreaming) return;
 
+      setStreamError(null);
       let sessionId = activeSessionId;
 
       // Auto-create session if none active
       if (!sessionId) {
-        const session = await createSession();
-        setSessions((prev) => [session, ...prev]);
-        setActiveSessionId(session.id);
-        sessionId = session.id;
+        try {
+          const session = await createSession();
+          setSessions((prev) => [session, ...prev]);
+          setActiveSessionId(session.id);
+          sessionId = session.id;
+        } catch {
+          setStreamError("Failed to create a new chat session. Please try again.");
+          return;
+        }
       }
 
+      // ✅ Optimistic user message — show immediately, don't wait for server
+      const optimisticUserMsg: Message = {
+        id: Date.now(), // temp id
+        role: "user",
+        content,
+        provider: "",
+        model_used: "",
+        created_at: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, optimisticUserMsg]);
       setIsStreaming(true);
       setStreamingContent("");
 
@@ -86,6 +106,7 @@ export const useChat = () => {
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+        let serverUserMsgReceived = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -104,13 +125,18 @@ export const useChat = () => {
               const event = JSON.parse(jsonStr) as SSEEvent;
 
               if (event.type === "user_message") {
-                setMessages((prev) => [...prev, event.data]);
+                // Replace optimistic message with real server message
+                if (!serverUserMsgReceived) {
+                  serverUserMsgReceived = true;
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === optimisticUserMsg.id ? event.data : m)),
+                  );
+                }
               } else if (event.type === "chunk") {
                 setStreamingContent((prev) => prev + event.content);
               } else if (event.type === "done") {
                 setMessages((prev) => [...prev, event.data]);
                 setStreamingContent("");
-                // Update session list with new last_message + updated_at
                 setSessions((prev) =>
                   prev.map((s) =>
                     s.id === sessionId
@@ -131,8 +157,26 @@ export const useChat = () => {
           }
         }
       } catch (err: unknown) {
-        if (err instanceof Error && err.name !== "AbortError") {
-          console.error("Stream error:", err.message);
+        if (err instanceof Error && err.name === "AbortError") {
+          // User stopped generation — that's fine, keep what streamed so far
+          const stoppedContent = streamingContent;
+          if (stoppedContent) {
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                role: "assistant",
+                content: stoppedContent,
+                provider: "",
+                model_used: "",
+                created_at: new Date().toISOString(),
+              },
+            ]);
+          }
+        } else {
+          // Real error — show it in the UI
+          const message = err instanceof Error ? err.message : "Something went wrong.";
+          setStreamError(message);
         }
       } finally {
         setIsStreaming(false);
@@ -140,7 +184,7 @@ export const useChat = () => {
         abortControllerRef.current = null;
       }
     },
-    [tokens, activeSessionId, isStreaming],
+    [tokens, activeSessionId, isStreaming, streamingContent],
   );
 
   const stopStreaming = useCallback(() => {
@@ -153,6 +197,7 @@ export const useChat = () => {
     messages,
     isStreaming,
     streamingContent,
+    streamError,
     isLoadingSessions,
     isLoadingMessages,
     loadSessions,

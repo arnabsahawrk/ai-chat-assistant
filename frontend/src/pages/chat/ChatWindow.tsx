@@ -12,6 +12,7 @@ interface Props {
   onSendMessage: (content: string) => void;
   onStopStreaming: () => void;
   onMenuClick: () => void;
+  streamError: string | null;
 }
 
 const suggestions = [
@@ -29,6 +30,7 @@ const ChatWindow = ({
   onSendMessage,
   onStopStreaming,
   onMenuClick,
+  streamError,
 }: Props) => {
   const { user } = useAuth();
   const [input, setInput] = useState("");
@@ -158,6 +160,20 @@ const ChatWindow = ({
         )}
       </div>
 
+      {streamError && (
+        <div className="max-w-2xl mx-auto px-4 pb-2">
+          <div
+            className="px-4 py-3 rounded-xl text-danger text-sm border"
+            style={{
+              background: "var(--color-danger-surface)",
+              borderColor: "var(--color-danger-border)",
+            }}
+          >
+            ⚠ {streamError} — please try again.
+          </div>
+        </div>
+      )}
+
       {/* Input bar */}
       <div className="px-4 py-4 border-t border-line shrink-0">
         <div className="max-w-2xl mx-auto">
@@ -170,7 +186,7 @@ const ChatWindow = ({
               placeholder="Message AI Chat Assistant…"
               rows={1}
               disabled={isStreaming}
-              className="flex-1 bg-transparent text-ink-primary text-sm placeholder:text-ink-muted resize-none outline-none min-h-[20px] max-h-40 disabled:opacity-50"
+              className="flex-1 bg-transparent text-ink-primary text-sm placeholder:text-ink-muted resize-none outline-none min-h-5 max-h-40 disabled:opacity-50"
             />
             {isStreaming ? (
               <button
