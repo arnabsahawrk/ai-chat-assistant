@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <p className="text-ink-muted text-sm mt-1">Please refresh the page</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 rounded-xl bg-accent text-ink-primary text-sm"
+              className="mt-4 px-4 py-2 rounded-xl bg-accent text-ink-muted text-sm"
             >
               Refresh
             </button>
