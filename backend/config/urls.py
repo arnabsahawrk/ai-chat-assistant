@@ -23,6 +23,7 @@ from config import settings
 urlpatterns = [
     path("", include("apps.core.urls")),
     path("api/auth/", include("apps.accounts.urls")),
+    path("api/chat/", include("apps.chat.urls")),
 ]
 
 if settings.DEBUG:
