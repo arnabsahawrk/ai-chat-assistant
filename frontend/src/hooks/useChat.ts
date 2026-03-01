@@ -103,7 +103,15 @@ export const useChat = () => {
           abortController.signal,
         );
 
-        const reader = response.body!.getReader();
+        if (!response.body) {
+          setStreamError(
+            "Streaming is not supported on this browser. Please try a different browser.",
+          );
+          setIsStreaming(false);
+          return;
+        }
+
+        const reader = response.body.getReader(); // no ! needed
         const decoder = new TextDecoder();
         let buffer = "";
         let serverUserMsgReceived = false;
@@ -125,7 +133,6 @@ export const useChat = () => {
               const event = JSON.parse(jsonStr) as SSEEvent;
 
               if (event.type === "user_message") {
-                // Replace optimistic message with real server message
                 if (!serverUserMsgReceived) {
                   serverUserMsgReceived = true;
                   setMessages((prev) =>
@@ -133,7 +140,6 @@ export const useChat = () => {
                   );
                 }
               } else if (event.type === "title") {
-                // Update session title in sidebar live
                 setSessions((prev) =>
                   prev.map((s) =>
                     String(s.id) === event.session_id ? { ...s, title: event.title } : s,
@@ -165,7 +171,6 @@ export const useChat = () => {
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
-          // User stopped generation — keep what streamed so far
           const stoppedContent = streamingContent;
           if (stoppedContent) {
             setMessages((prev) => [
