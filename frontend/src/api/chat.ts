@@ -25,17 +25,6 @@ export const getMessages = async (sessionId: number): Promise<Message[]> => {
   return res.data;
 };
 
-// Returns the raw fetch Response for SSE streaming
-export const sendMessage = (
-  sessionId: number,
-  content: string,
-  accessToken: string,
-): EventSource => {
-  // EventSource doesn't support POST — we use fetch + ReadableStream instead
-  // Return a controller so caller can abort
-  throw new Error("Use streamMessage instead");
-};
-
 export const streamMessage = async (
   sessionId: number,
   content: string,
