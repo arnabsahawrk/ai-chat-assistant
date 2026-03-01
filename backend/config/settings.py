@@ -189,4 +189,5 @@ SOCIALACCOUNT_PROVIDERS = {
 REST_AUTH = {
     "USE_JWT": True,
     "JWT_AUTH_HTTPONLY": False,
+    "USER_DETAILS_SERIALIZER": "apps.accounts.serializers.CustomUserDetailsSerializer",
 }
