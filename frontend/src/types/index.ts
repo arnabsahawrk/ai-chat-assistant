@@ -47,4 +47,5 @@ export type SSEEvent =
   | { type: "user_message"; data: Message }
   | { type: "chunk"; content: string }
   | { type: "done"; data: Message }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "title"; title: string; session_id: string };

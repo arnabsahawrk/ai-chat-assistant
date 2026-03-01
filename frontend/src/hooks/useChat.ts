@@ -79,9 +79,9 @@ export const useChat = () => {
         }
       }
 
-      // ✅ Optimistic user message — show immediately, don't wait for server
+      // Optimistic user message — show immediately, don't wait for server
       const optimisticUserMsg: Message = {
-        id: Date.now(), // temp id
+        id: Date.now(),
         role: "user",
         content,
         provider: "",
@@ -132,6 +132,13 @@ export const useChat = () => {
                     prev.map((m) => (m.id === optimisticUserMsg.id ? event.data : m)),
                   );
                 }
+              } else if (event.type === "title") {
+                // Update session title in sidebar live
+                setSessions((prev) =>
+                  prev.map((s) =>
+                    String(s.id) === event.session_id ? { ...s, title: event.title } : s,
+                  ),
+                );
               } else if (event.type === "chunk") {
                 setStreamingContent((prev) => prev + event.content);
               } else if (event.type === "done") {
@@ -158,7 +165,7 @@ export const useChat = () => {
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
-          // User stopped generation — that's fine, keep what streamed so far
+          // User stopped generation — keep what streamed so far
           const stoppedContent = streamingContent;
           if (stoppedContent) {
             setMessages((prev) => [
@@ -174,7 +181,6 @@ export const useChat = () => {
             ]);
           }
         } else {
-          // Real error — show it in the UI
           const message = err instanceof Error ? err.message : "Something went wrong.";
           setStreamError(message);
         }
