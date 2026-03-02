@@ -1,14 +1,16 @@
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { useAuth } from "@/context/AuthContext";
 import type { Message } from "@/types";
-import { Sparkles } from "lucide-react";
+import { RefreshCw, Sparkles } from "lucide-react";
 
 interface Props {
   message: Message;
   isStreaming?: boolean;
+  isLast?: boolean;
+  onRegenerate?: () => void;
 }
 
-const MessageBubble = ({ message, isStreaming = false }: Props) => {
+const MessageBubble = ({ message, isStreaming = false, isLast = false, onRegenerate }: Props) => {
   const { user } = useAuth();
   const isUser = message.role === "user";
 
@@ -44,6 +46,17 @@ const MessageBubble = ({ message, isStreaming = false }: Props) => {
           <p className="text-ink-muted text-[10px] mt-2">
             {message.provider} · {message.model_used}
           </p>
+        )}
+
+        {/* Regenerate button — only on last assistant message */}
+        {isLast && !isStreaming && onRegenerate && (
+          <button
+            onClick={onRegenerate}
+            className="flex items-center gap-1.5 mt-2 text-ink-muted hover:text-ink-primary transition-colors duration-150 text-xs"
+          >
+            <RefreshCw size={11} />
+            <span>Regenerate</span>
+          </button>
         )}
       </div>
     </div>

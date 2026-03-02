@@ -47,3 +47,23 @@ export const streamMessage = async (
   if (!res.ok) throw new Error("Failed to send message");
   return res;
 };
+
+export const regenerateMessage = async (
+  sessionId: number,
+  accessToken: string,
+  signal: AbortSignal,
+): Promise<Response> => {
+  const res = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL}/chat/sessions/${sessionId}/messages/regenerate/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      signal,
+    },
+  );
+  if (!res.ok) throw new Error("Failed to regenerate message");
+  return res;
+};

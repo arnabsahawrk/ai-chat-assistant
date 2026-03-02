@@ -154,3 +154,81 @@ class SendMessageView(APIView):
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"  # important for Nginx/Render
         return response
+
+
+class RegenerateMessageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        session = get_object_or_404(
+            ChatSession,
+            id=session_id,
+            user=request.user,
+        )
+
+        # Get last assistant message and delete it
+        last_assistant = session.messages.filter(role=Message.Role.ASSISTANT).last()
+        if last_assistant:
+            last_assistant.delete()
+
+        # Get last user message to resend
+        last_user = session.messages.filter(role=Message.Role.USER).last()
+        if not last_user:
+            return Response(
+                {"error": "No user message to regenerate from."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        content = last_user.content
+        messages = build_messages(session, content)
+
+        def event_stream() -> Generator[bytes, None, None]:
+            full_response = []
+
+            try:
+                stream, provider_name, model_name = stream_ai_response(messages)
+
+                for chunk in stream:
+                    full_response.append(chunk)
+                    yield (
+                        f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n".encode(
+                            "utf-8"
+                        )
+                    )
+
+                assistant_content = "".join(full_response)
+                assistant_message = Message.objects.create(
+                    session=session,
+                    role=Message.Role.ASSISTANT,
+                    content=assistant_content,
+                    provider=provider_name,
+                    model_used=model_name,
+                )
+                session.save()
+
+                yield (
+                    f"data: {json.dumps({'type': 'done', 'data': MessageSerializer(assistant_message).data})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+
+            except RuntimeError as e:
+                yield (
+                    f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+            except Exception:
+                yield (
+                    f"data: {json.dumps({'type': 'error', 'message': 'An unexpected error occurred.'})}\n\n".encode(
+                        "utf-8"
+                    )
+                )
+
+        response = StreamingHttpResponse(
+            event_stream(),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
