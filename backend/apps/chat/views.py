@@ -88,18 +88,21 @@ class SendMessageView(APIView):
             )
 
             # Auto-title on first user message
-            user_message_count = Message.objects.filter(
-                session=session, role=Message.Role.USER
-            ).count()
-            if user_message_count == 1 and session.title == "New Chat":
-                title = generate_title(content)
-                session.title = title
-                session.save(update_fields=["title"])
+            try:
+                user_message_count = Message.objects.filter(
+                    session=session, role=Message.Role.USER
+                ).count()
+                if user_message_count == 1 and session.title == "New Chat":
+                    title = generate_title(content)
+                    session.title = title
+                    session.save(update_fields=["title"])
                 yield (
                     f"data: {json.dumps({'type': 'title', 'title': title, 'session_id': str(session.pk)})}\n\n".encode(
                         "utf-8"
                     )
                 )
+            except Exception:
+                pass
 
             try:
                 stream, provider_name, model_name = stream_ai_response(messages)
