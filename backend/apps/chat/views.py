@@ -1,25 +1,26 @@
 import json
 from collections.abc import Generator
+from django.contrib.auth import get_user_model
+from django.db.models import Count
+from django.db.models.functions import TruncDate
+from django.http import StreamingHttpResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
+from django_ratelimit.decorators import ratelimit
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.shortcuts import get_object_or_404
-from django.http import StreamingHttpResponse
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import timedelta
-from django.conf import settings
 
-from .models import AIProviderUsage, ChatSession, Message
+from .models import ChatSession, Message, AIProviderUsage
 from .serializers import (
     ChatSessionSerializer,
     ChatSessionDetailSerializer,
     MessageSerializer,
 )
 from .ai.router import stream_ai_response, build_messages, generate_title
-
-User = get_user_model()
+from django.conf import settings
 
 
 class ChatSessionListCreateView(generics.ListCreateAPIView):
@@ -58,6 +59,18 @@ class SendMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id):
+        # Rate limit — per authenticated user
+        limit = f"{getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)}/h"
+        decorator = ratelimit(key="user", rate=limit, method="POST", block=False)
+        decorator(lambda r: getattr(r, "limited", False))(request)
+        if getattr(request, "limited", False):
+            return Response(
+                {
+                    "error": f"Rate limit exceeded. You can send {getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)} messages per hour."
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         session = get_object_or_404(
             ChatSession,
             id=session_id,
@@ -71,29 +84,24 @@ class SendMessageView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Save user message
         user_message = Message.objects.create(
             session=session,
             role=Message.Role.USER,
             content=content,
         )
-        session.save()  # touch updated_at
+        session.save()
 
-        # Build context window
         messages = build_messages(session, content)
 
-        # SSE streaming response
         def event_stream() -> Generator[bytes, None, None]:
             full_response = []
 
-            # Send user message metadata first
             yield (
                 f"data: {json.dumps({'type': 'user_message', 'data': MessageSerializer(user_message).data})}\n\n".encode(
                     "utf-8"
                 )
             )
 
-            # Auto-title on first user message
             try:
                 user_message_count = Message.objects.filter(
                     session=session, role=Message.Role.USER
@@ -108,7 +116,7 @@ class SendMessageView(APIView):
                         )
                     )
             except Exception:
-                pass  # title failed — stream continues normally
+                pass
 
             try:
                 stream, provider_name, model_name = stream_ai_response(messages)
@@ -121,7 +129,6 @@ class SendMessageView(APIView):
                         )
                     )
 
-                # Save complete assistant message to DB
                 assistant_content = "".join(full_response)
                 assistant_message = Message.objects.create(
                     session=session,
@@ -132,7 +139,6 @@ class SendMessageView(APIView):
                 )
                 session.save()
 
-                # Send done event with full assistant message
                 yield (
                     f"data: {json.dumps({'type': 'done', 'data': MessageSerializer(assistant_message).data})}\n\n".encode(
                         "utf-8"
@@ -145,7 +151,6 @@ class SendMessageView(APIView):
                         "utf-8"
                     )
                 )
-
             except Exception:
                 yield (
                     f"data: {json.dumps({'type': 'error', 'message': 'An unexpected error occurred.'})}\n\n".encode(
@@ -154,11 +159,10 @@ class SendMessageView(APIView):
                 )
 
         response = StreamingHttpResponse(
-            event_stream(),
-            content_type="text/event-stream",
+            event_stream(), content_type="text/event-stream"
         )
         response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # important for Nginx/Render
+        response["X-Accel-Buffering"] = "no"
         return response
 
 
@@ -166,18 +170,24 @@ class RegenerateMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, session_id):
-        session = get_object_or_404(
-            ChatSession,
-            id=session_id,
-            user=request.user,
-        )
+        # Rate limit — same pool as SendMessageView
+        limit = f"{getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)}/h"
+        decorator = ratelimit(key="user", rate=limit, method="POST", block=False)
+        decorator(lambda r: None)(request)
+        if getattr(request, "limited", False):
+            return Response(
+                {
+                    "error": f"Rate limit exceeded. You can send {getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)} messages per hour."
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
-        # Get last assistant message and delete it
+        session = get_object_or_404(ChatSession, id=session_id, user=request.user)
+
         last_assistant = session.messages.filter(role=Message.Role.ASSISTANT).last()
         if last_assistant:
             last_assistant.delete()
 
-        # Get last user message to resend
         last_user = session.messages.filter(role=Message.Role.USER).last()
         if not last_user:
             return Response(
@@ -232,8 +242,7 @@ class RegenerateMessageView(APIView):
                 )
 
         response = StreamingHttpResponse(
-            event_stream(),
-            content_type="text/event-stream",
+            event_stream(), content_type="text/event-stream"
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
@@ -248,13 +257,9 @@ class DashboardView(APIView):
         today = timezone.now().date()
         last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
 
-        # Totals
         total_messages = Message.objects.count()
         total_sessions = ChatSession.objects.count()
         total_users = User.objects.count()
-
-        # Provider breakdown (assistant messages only)
-        from django.db.models import Count
 
         provider_counts = (
             Message.objects.filter(role=Message.Role.ASSISTANT)
@@ -277,9 +282,6 @@ class DashboardView(APIView):
             for p in provider_counts
         ]
 
-        # Messages per day (last 7 days)
-        from django.db.models.functions import TruncDate
-
         daily_counts = {
             entry["day"].strftime("%Y-%m-%d"): entry["count"]
             for entry in Message.objects.annotate(day=TruncDate("created_at"))
@@ -295,13 +297,12 @@ class DashboardView(APIView):
             for d in last_7_days
         ]
 
-        # Today's provider quota usage
-        today_usage = []
         limits = {
             "groq": settings.AI_DAILY_LIMIT_GROQ,
             "gemini": settings.AI_DAILY_LIMIT_GEMINI,
             "mistral": settings.AI_DAILY_LIMIT_MISTRAL,
         }
+        today_usage = []
         for provider_name, limit in limits.items():
             usage = AIProviderUsage.objects.filter(
                 provider=provider_name, date=today

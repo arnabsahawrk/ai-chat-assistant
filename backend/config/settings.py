@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "dj_rest_auth",
     "dj_rest_auth.registration",
+    "django_ratelimit",
     "apps.accounts",
     "apps.chat",
     "apps.core",
@@ -211,3 +212,16 @@ AI_CONTEXT_WINDOW = 10  # last N messages sent as history
 AI_DAILY_LIMIT_GROQ = 14000  # requests/day
 AI_DAILY_LIMIT_GEMINI = 1400  # requests/day (buffer below 1500)
 AI_DAILY_LIMIT_MISTRAL = 500  # conservative limit
+
+# Cache — used for rate limiting
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+# Rate limiting
+RATE_LIMIT_PER_HOUR = config("RATE_LIMIT_PER_HOUR", default=30, cast=int)
+
+# Silence django-ratelimit's shared cache warning — fine for single-instance deployment
+SILENCED_SYSTEM_CHECKS = ["django_ratelimit.E003", "django_ratelimit.W001"]

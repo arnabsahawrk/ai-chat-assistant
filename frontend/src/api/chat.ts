@@ -44,7 +44,15 @@ export const streamMessage = async (
     },
   );
 
-  if (!res.ok) throw new Error("Failed to send message");
+  if (!res.ok) {
+    // Parse error message from backend (handles 429 + others)
+    try {
+      const data = await res.json();
+      throw new Error(data.error ?? "Failed to send message");
+    } catch {
+      throw new Error("Failed to send message");
+    }
+  }
   return res;
 };
 
@@ -64,6 +72,15 @@ export const regenerateMessage = async (
       signal,
     },
   );
-  if (!res.ok) throw new Error("Failed to regenerate message");
+
+  if (!res.ok) {
+    // Parse error message from backend (handles 429 + others)
+    try {
+      const data = await res.json();
+      throw new Error(data.error ?? "Failed to send message");
+    } catch {
+      throw new Error("Failed to send message");
+    }
+  }
   return res;
 };
