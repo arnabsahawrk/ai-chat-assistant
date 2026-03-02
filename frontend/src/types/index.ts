@@ -49,3 +49,29 @@ export type SSEEvent =
   | { type: "done"; data: Message }
   | { type: "error"; message: string }
   | { type: "title"; title: string; session_id: string };
+
+export interface ProviderBreakdown {
+  provider: string;
+  count: number;
+  percentage: number;
+}
+
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
+export interface TodayUsage {
+  provider: string;
+  used: number;
+  limit: number;
+}
+
+export interface DashboardStats {
+  total_messages: number;
+  total_sessions: number;
+  total_users: number;
+  provider_breakdown: ProviderBreakdown[];
+  messages_per_day: DailyCount[];
+  today_usage: TodayUsage[];
+}

@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
 import type { ChatSession } from "@/types";
-import { Loader2, LogOut, MessageSquare, Trash2, X } from "lucide-react";
+import { BarChart2, Loader2, LogOut, MessageSquare, Trash2, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import NewChatButton from "./NewChatButton";
 
 interface Props {
@@ -23,6 +24,7 @@ const Sidebar = ({
   onClose,
 }: Props) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <aside className="w-64 h-full bg-surface-raised border-r border-line flex flex-col">
@@ -86,6 +88,17 @@ const Sidebar = ({
           </ul>
         )}
       </nav>
+
+      {/* Dashboard link */}
+      <div className="px-3 pb-2">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-ink-secondary hover:text-ink-primary hover:bg-surface-overlay transition-all duration-150"
+        >
+          <BarChart2 size={13} className="shrink-0 text-ink-muted" />
+          <span>Usage Dashboard</span>
+        </button>
+      </div>
 
       {/* User profile + logout */}
       <div className="p-3 border-t border-line">
