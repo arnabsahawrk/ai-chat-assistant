@@ -30,7 +30,7 @@ const DashboardPage = () => {
   useEffect(() => {
     getDashboardStats()
       .then(setStats)
-      .catch(() => setError("Failed to load dashboard. Make sure your account has admin access."))
+      .catch(() => setError("Failed to load dashboard data. Please try again."))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -176,17 +176,28 @@ const DashboardPage = () => {
                   <Bar
                     dataKey="count"
                     radius={[6, 6, 0, 0]}
-                    fill="var(--color-accent)"
-                    // Per-bar color
                     label={false}
-                  >
-                    {stats!.provider_breakdown.map((entry) => (
-                      <rect
-                        key={entry.provider}
-                        fill={PROVIDER_COLORS[entry.provider] ?? "var(--color-accent)"}
-                      />
-                    ))}
-                  </Bar>
+                    shape={(props: unknown) => {
+                      const p = props as {
+                        x: number;
+                        y: number;
+                        width: number;
+                        height: number;
+                        provider: string;
+                      };
+                      return (
+                        <rect
+                          x={p.x}
+                          y={p.y}
+                          width={p.width}
+                          height={p.height}
+                          fill={PROVIDER_COLORS[p.provider] ?? "var(--color-accent)"}
+                          rx={6}
+                          ry={6}
+                        />
+                      );
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
 
