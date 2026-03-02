@@ -222,3 +222,6 @@ CACHES = {
 
 # Rate limiting
 RATE_LIMIT_PER_HOUR = config("RATE_LIMIT_PER_HOUR", default=30, cast=int)
+
+# Silence django-ratelimit's shared cache warning — fine for single-instance deployment
+SILENCED_SYSTEM_CHECKS = ["django_ratelimit.E003", "django_ratelimit.W001"]
