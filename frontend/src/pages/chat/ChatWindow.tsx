@@ -13,6 +13,7 @@ interface Props {
   onStopStreaming: () => void;
   onMenuClick: () => void;
   streamError: string | null;
+  onRegenerate: () => void;
 }
 
 const suggestions = [
@@ -31,6 +32,7 @@ const ChatWindow = ({
   onStopStreaming,
   onMenuClick,
   streamError,
+  onRegenerate,
 }: Props) => {
   const { user } = useAuth();
   const [input, setInput] = useState("");
@@ -122,9 +124,19 @@ const ChatWindow = ({
         ) : (
           /* Message list */
           <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4">
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
+            {messages.map((msg, idx) => {
+              const isLastAssistant =
+                msg.role === "assistant" &&
+                idx === [...messages].map((m) => m.role).lastIndexOf("assistant");
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isLast={isLastAssistant}
+                  onRegenerate={onRegenerate}
+                />
+              );
+            })}
 
             {/* Streaming assistant bubble */}
             {isStreaming && streamingContent && (

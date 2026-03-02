@@ -50,6 +50,7 @@ const ChatPage = () => {
         onSendMessage={chat.sendMessage}
         onStopStreaming={chat.stopStreaming}
         onMenuClick={() => setSidebarOpen(true)}
+        onRegenerate={chat.regenerateMessage}
       />
     </div>
   );

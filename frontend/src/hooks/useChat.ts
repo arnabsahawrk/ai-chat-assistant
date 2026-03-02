@@ -1,4 +1,11 @@
-import { createSession, deleteSession, getSession, getSessions, streamMessage } from "@/api/chat";
+import {
+  createSession,
+  deleteSession,
+  getSession,
+  getSessions,
+  regenerateMessage as regenerateAPI,
+  streamMessage,
+} from "@/api/chat";
 import { useAuth } from "@/context/AuthContext";
 import type { ChatSession, Message, SSEEvent } from "@/types";
 import { useCallback, useRef, useState } from "react";
@@ -198,6 +205,94 @@ export const useChat = () => {
     [tokens, activeSessionId, isStreaming, streamingContent],
   );
 
+  const regenerateMessage = useCallback(async () => {
+    if (!tokens?.access || isStreaming || !activeSessionId) return;
+
+    setStreamError(null);
+
+    // Remove last assistant message from UI immediately
+    setMessages((prev) => {
+      const lastAssistantIdx = [...prev].reverse().findIndex((m) => m.role === "assistant");
+      if (lastAssistantIdx === -1) return prev;
+      const actualIdx = prev.length - 1 - lastAssistantIdx;
+      return prev.filter((_, i) => i !== actualIdx);
+    });
+
+    setIsStreaming(true);
+    setStreamingContent("");
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
+      const response = await regenerateAPI(activeSessionId, tokens.access, abortController.signal);
+
+      if (!response.body) {
+        setStreamError("Streaming is not supported on this browser.");
+        setIsStreaming(false);
+        return;
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const event = JSON.parse(jsonStr) as SSEEvent;
+
+            if (event.type === "chunk") {
+              setStreamingContent((prev) => prev + event.content);
+            } else if (event.type === "done") {
+              setMessages((prev) => [...prev, event.data]);
+              setStreamingContent("");
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+          } catch {
+            // skip malformed lines
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        const stoppedContent = streamingContent;
+        if (stoppedContent) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now(),
+              role: "assistant",
+              content: stoppedContent,
+              provider: "",
+              model_used: "",
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        }
+      } else {
+        const message = err instanceof Error ? err.message : "Something went wrong.";
+        setStreamError(message);
+      }
+    } finally {
+      setIsStreaming(false);
+      setStreamingContent("");
+      abortControllerRef.current = null;
+    }
+  }, [tokens, activeSessionId, isStreaming, streamingContent]);
+
   const stopStreaming = useCallback(() => {
     abortControllerRef.current?.abort();
   }, []);
@@ -217,5 +312,6 @@ export const useChat = () => {
     removeSession,
     sendMessage,
     stopStreaming,
+    regenerateMessage,
   };
 };

@@ -4,6 +4,7 @@ from .views import (
     ChatSessionDetailView,
     MessageListView,
     SendMessageView,
+    RegenerateMessageView,
 )
 
 urlpatterns = [
@@ -22,5 +23,10 @@ urlpatterns = [
         "sessions/<int:session_id>/messages/send/",
         SendMessageView.as_view(),
         name="send_message",
+    ),
+    path(
+        "sessions/<int:session_id>/messages/regenerate/",
+        RegenerateMessageView.as_view(),
+        name="regenerate_message",
     ),
 ]
