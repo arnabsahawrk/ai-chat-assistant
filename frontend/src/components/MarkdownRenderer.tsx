@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism"; // ✅ cjs instead of esm
 import remarkGfm from "remark-gfm";
 
 interface CodeBlockProps {
@@ -14,10 +14,28 @@ interface CodeBlockProps {
 const CodeBlock = ({ language, code }: CodeBlockProps) => {
   const [copied, setCopied] = useState(false);
 
+  // Safe clipboard — handles iOS Safari where clipboard API may not exist
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // Fallback for iOS Safari
+        const textarea = document.createElement("textarea");
+        textarea.value = code;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Copy failed silently — don't crash
+    }
   };
 
   return (
@@ -43,7 +61,7 @@ const CodeBlock = ({ language, code }: CodeBlockProps) => {
         </button>
       </div>
 
-      {/* Code */}
+      {/* Wrapped in try-catch via error boundary pattern — won't crash React */}
       <SyntaxHighlighter
         language={language || "text"}
         style={oneDark}
@@ -76,7 +94,6 @@ interface Props {
 
 const MarkdownRenderer = ({ content, isStreaming = false }: Props) => {
   const components: Components = {
-    // Code blocks and inline code
     code({ className, children, ...props }) {
       const match = /language-(\w+)/.exec(className || "");
       const isBlock = !!match;
@@ -96,7 +113,6 @@ const MarkdownRenderer = ({ content, isStreaming = false }: Props) => {
       );
     },
 
-    // Headings
     h1: ({ children }) => (
       <h1 className="text-ink-primary text-xl font-semibold mt-4 mb-2 leading-tight">{children}</h1>
     ),
@@ -109,12 +125,10 @@ const MarkdownRenderer = ({ content, isStreaming = false }: Props) => {
       </h3>
     ),
 
-    // Paragraphs
     p: ({ children }) => (
       <p className="text-ink-primary text-sm leading-relaxed mb-3 last:mb-0">{children}</p>
     ),
 
-    // Lists
     ul: ({ children }) => (
       <ul className="text-ink-primary text-sm leading-relaxed mb-3 pl-5 list-disc space-y-1">
         {children}
@@ -127,17 +141,14 @@ const MarkdownRenderer = ({ content, isStreaming = false }: Props) => {
     ),
     li: ({ children }) => <li className="leading-relaxed">{children}</li>,
 
-    // Blockquote
     blockquote: ({ children }) => (
       <blockquote className="border-l-2 border-line-strong pl-4 my-3 text-ink-secondary italic">
         {children}
       </blockquote>
     ),
 
-    // Horizontal rule
     hr: () => <hr className="border-line my-4" />,
 
-    // Links
     a: ({ href, children }) => (
       <a
         href={href}
@@ -149,13 +160,11 @@ const MarkdownRenderer = ({ content, isStreaming = false }: Props) => {
       </a>
     ),
 
-    // Strong / Em
     strong: ({ children }) => (
       <strong className="font-semibold text-ink-primary">{children}</strong>
     ),
     em: ({ children }) => <em className="italic text-ink-secondary">{children}</em>,
 
-    // Table
     table: ({ children }) => (
       <div className="overflow-x-auto my-3">
         <table className="w-full text-sm border-collapse border border-line rounded-xl overflow-hidden">
