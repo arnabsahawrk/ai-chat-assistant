@@ -1,0 +1,259 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="{% static 'ai.svg' %}">
+    <title>AI Chat Assistant — API</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0c0c0e;
+        color: #eeeef0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1.5rem;
+        gap: 2rem;
+        text-align: center;
+      }
+      
+      .icon {
+        width: 64px;
+        height: 64px;
+        background: #16161a;
+        border: 1px solid #25252a;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .icon svg {
+        width: 28px;
+        height: 28px;
+        stroke: #eeeef0;
+        fill: none;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid #1a1a1f;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #8c8c92;
+        letter-spacing: 0.03em;
+      }
+      
+      .dot {
+        width: 6px;
+        height: 6px;
+        background: #34d399;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.4;
+        }
+      }
+      
+      h1 {
+        font-size: clamp(1.75rem, 5vw, 2.5rem);
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+      }
+      
+      h1 span {
+        color: #8c8c92;
+        font-weight: 400;
+      }
+      
+      p {
+        font-size: 0.9375rem;
+        color: #8c8c92;
+        max-width: 480px;
+        line-height: 1.65;
+      }
+      
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      
+      a.btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: opacity 0.15s, background 0.15s;
+      }
+      
+      a.btn-primary {
+        background: #eeeef0;
+        color: #0c0c0e;
+      }
+      
+      a.btn-primary:hover {
+        background: #ffffff;
+      }
+      
+      a.btn-secondary {
+        background: transparent;
+        color: #8c8c92;
+        border: 1px solid #1a1a1f;
+      }
+      
+      a.btn-secondary:hover {
+        background: #1e1e23;
+        color: #eeeef0;
+      }
+      
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+        justify-content: center;
+        margin-top: 0.5rem;
+      }
+      
+      .meta-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      .meta-label {
+        font-size: 11px;
+        color: #44444a;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      
+      .meta-value {
+        font-size: 13px;
+        color: #8c8c92;
+      }
+      
+      footer {
+        padding: 1.5rem;
+        text-align: center;
+        font-size: 12px;
+        color: #44444a;
+        border-top: 1px solid #1a1a1f;
+      }
+      
+      footer a {
+        color: #8c8c92;
+        text-decoration: none;
+      }
+      
+      footer a:hover {
+        color: #eeeef0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+          <path d="M20 2v4" />
+          <path d="M22 4h-4" />
+          <circle cx="4" cy="20" r="2" />
+        </svg>
+      </div>
+
+      <div class="badge">
+        <span class="dot"></span>
+        API is live
+      </div>
+
+      <div>
+        <h1>AI Chat Assistant <span>/ API</span></h1>
+      </div>
+
+      <p>REST API powering a multi-provider AI chat application. Supports Google OAuth, JWT authentication, real-time SSE streaming, and automatic failover across Groq, Gemini, and Mistral.</p>
+
+      <div class="actions">
+        <a class="btn btn-primary" href="/api/docs/">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>API Documentation
+        </a>
+        <a class="btn btn-secondary" href="https://arnabsahawrk-ai-chat-assistant.vercel.app" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" y1="14" x2="21" y2="3" />
+          </svg>Live App
+        </a>
+      </div>
+
+      <div class="meta">
+        <div class="meta-item">
+          <span class="meta-label">Backend</span>
+          <span class="meta-value">Django 6 + DRF</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Auth</span>
+          <span class="meta-value">Google OAuth + JWT</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">AI Providers</span>
+          <span class="meta-value">Groq · Gemini · Mistral</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Streaming</span>
+          <span class="meta-value">Server-Sent Events</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      &copy; 2026 AI Chat Assistant &mdash; Designed &amp; Developed by
+      <a href="https://links-arnabsahawrk.vercel.app/" target="_blank" rel="noopener">Arnab Saha</a>
+    </footer>
+  </body>
+</html>

@@ -21,8 +21,53 @@ from .serializers import (
 )
 from .ai.router import stream_ai_response, build_messages, generate_title
 from django.conf import settings
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    OpenApiResponse,
+    OpenApiExample,
+)
+from apps.core.swagger import (
+    RESPONSE_401,
+    RESPONSE_404,
+    RESPONSE_429,
+    RESPONSE_400,
+    SESSION_ID_PATH,
+    PK_PATH,
+    EXAMPLE_USER_MESSAGE,
+    EXAMPLE_SESSION,
+    EXAMPLE_MESSAGE,
+    EXAMPLE_SSE_STREAM,
+)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["sessions"],
+        summary="List chat sessions",
+        description="Returns all chat sessions for the authenticated user, ordered by most recently updated.",
+        responses={
+            200: OpenApiResponse(
+                description="List of sessions.",
+                examples=[EXAMPLE_SESSION],
+            ),
+            401: RESPONSE_401,
+        },
+    ),
+    post=extend_schema(
+        tags=["sessions"],
+        summary="Create chat session",
+        description="Create a new chat session. The title defaults to 'New Chat' and is updated automatically after the first message.",
+        request={"application/json": {"type": "object"}},
+        responses={
+            201: OpenApiResponse(
+                description="Session created.",
+                examples=[EXAMPLE_SESSION],
+            ),
+            401: RESPONSE_401,
+        },
+    ),
+)
 class ChatSessionListCreateView(generics.ListCreateAPIView):
     serializer_class = ChatSessionSerializer
     permission_classes = [IsAuthenticated]
@@ -34,6 +79,30 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["sessions"],
+        summary="Get chat session",
+        description="Retrieve a session along with its full message history.",
+        parameters=[PK_PATH],
+        responses={
+            200: OpenApiResponse(description="Session with messages."),
+            401: RESPONSE_401,
+            404: RESPONSE_404,
+        },
+    ),
+    delete=extend_schema(
+        tags=["sessions"],
+        summary="Delete chat session",
+        description="Permanently delete a session and all its messages.",
+        parameters=[PK_PATH],
+        responses={
+            204: OpenApiResponse(description="Session deleted."),
+            401: RESPONSE_401,
+            404: RESPONSE_404,
+        },
+    ),
+)
 class ChatSessionDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = ChatSessionDetailSerializer
     permission_classes = [IsAuthenticated]
@@ -42,6 +111,22 @@ class ChatSessionDetailView(generics.RetrieveDestroyAPIView):
         return ChatSession.objects.filter(user=self.request.user)
 
 
+@extend_schema_view(
+    get=extend_schema(
+        tags=["messages"],
+        summary="List messages",
+        description="Returns all messages in a session in chronological order.",
+        parameters=[SESSION_ID_PATH],
+        responses={
+            200: OpenApiResponse(
+                description="List of messages.",
+                examples=[EXAMPLE_MESSAGE],
+            ),
+            401: RESPONSE_401,
+            404: RESPONSE_404,
+        },
+    ),
+)
 class MessageListView(generics.ListAPIView):
     serializer_class = MessageSerializer
     permission_classes = [IsAuthenticated]
@@ -58,6 +143,40 @@ class MessageListView(generics.ListAPIView):
 class SendMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=["messages"],
+        summary="Send message (SSE stream)",
+        description=(
+            "Send a user message and receive the AI response as a Server-Sent Events stream. "
+            "The response Content-Type is `text/event-stream`. Each event is a JSON object on a `data:` line.\n\n"
+            "**Event types:**\n"
+            "- `user_message` — fired immediately with the saved user message object\n"
+            "- `title` — fired after the first message only, contains the AI-generated session title\n"
+            "- `chunk` — one token of the AI response\n"
+            "- `done` — fired when streaming completes, contains the full saved assistant message object\n"
+            "- `error` — fired on failure, contains a `message` string\n\n"
+            "Abort the request at any time to stop generation."
+        ),
+        parameters=[SESSION_ID_PATH],
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {"content": {"type": "string"}},
+                "required": ["content"],
+            }
+        },
+        responses={
+            200: OpenApiResponse(
+                description="SSE stream. Content-Type: text/event-stream.",
+                examples=[EXAMPLE_SSE_STREAM],
+            ),
+            400: RESPONSE_400,
+            401: RESPONSE_401,
+            404: RESPONSE_404,
+            429: RESPONSE_429,
+        },
+        examples=[EXAMPLE_USER_MESSAGE],
+    )
     def post(self, request, session_id):
         # Rate limit — per authenticated user
         limit = f"{getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)}/h"
@@ -169,6 +288,27 @@ class SendMessageView(APIView):
 class RegenerateMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=["messages"],
+        summary="Regenerate last response (SSE stream)",
+        description=(
+            "Delete the last assistant message and regenerate a new response from the last user message. "
+            "Returns the same SSE stream format as `/send/` but only emits `chunk`, `done`, and `error` events. "
+            "Subject to the same rate limit as `/send/`."
+        ),
+        parameters=[SESSION_ID_PATH],
+        request={"application/json": {"type": "object"}},
+        responses={
+            200: OpenApiResponse(
+                description="SSE stream. Content-Type: text/event-stream.",
+                examples=[EXAMPLE_SSE_STREAM],
+            ),
+            400: RESPONSE_400,
+            401: RESPONSE_401,
+            404: RESPONSE_404,
+            429: RESPONSE_429,
+        },
+    )
     def post(self, request, session_id):
         # Rate limit — same pool as SendMessageView
         limit = f"{getattr(settings, 'RATE_LIMIT_PER_HOUR', 30)}/h"
@@ -252,6 +392,50 @@ class RegenerateMessageView(APIView):
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=["dashboard"],
+        summary="Usage dashboard",
+        description=(
+            "Returns platform-wide usage statistics including total messages, sessions, users, "
+            "provider breakdown percentages, daily message counts for the last 7 days, "
+            "and today's quota usage per AI provider."
+        ),
+        responses={
+            200: OpenApiResponse(
+                description="Dashboard statistics.",
+                examples=[
+                    OpenApiExample(
+                        name="Dashboard stats",
+                        value={
+                            "total_messages": 1420,
+                            "total_sessions": 310,
+                            "total_users": 42,
+                            "provider_breakdown": [
+                                {"provider": "groq", "count": 1100, "percentage": 77.5},
+                                {
+                                    "provider": "gemini",
+                                    "count": 250,
+                                    "percentage": 17.6,
+                                },
+                                {"provider": "mistral", "count": 70, "percentage": 4.9},
+                            ],
+                            "messages_per_day": [
+                                {"date": "2026-02-24", "count": 180},
+                                {"date": "2026-02-25", "count": 210},
+                            ],
+                            "today_usage": [
+                                {"provider": "groq", "used": 340, "limit": 14000},
+                                {"provider": "gemini", "used": 12, "limit": 1400},
+                                {"provider": "mistral", "used": 0, "limit": 500},
+                            ],
+                        },
+                        response_only=True,
+                    )
+                ],
+            ),
+            401: RESPONSE_401,
+        },
+    )
     def get(self, request):
         User = get_user_model()
         today = timezone.now().date()
