@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     ChatSessionListCreateView,
     ChatSessionDetailView,
+    DashboardView,
     MessageListView,
     SendMessageView,
     RegenerateMessageView,
@@ -29,4 +30,5 @@ urlpatterns = [
         RegenerateMessageView.as_view(),
         name="regenerate_message",
     ),
+    path("dashboard/", DashboardView.as_view(), name="dashboard"),
 ]

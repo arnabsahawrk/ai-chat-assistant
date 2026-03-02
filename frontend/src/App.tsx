@@ -1,6 +1,7 @@
 import { useAuth } from "@/context/AuthContext";
 import LoginPage from "@/pages/auth/LoginPage";
 import ChatPage from "@/pages/chat/ChatPage";
+import DashboardPage from "@/pages/dashboard/DashboardPage";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 const App = () => {
@@ -15,6 +16,10 @@ const App = () => {
       <Route
         path="/chat"
         element={isAuthenticated ? <ChatPage /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/dashboard"
+        element={isAuthenticated ? <DashboardPage /> : <Navigate to="/login" replace />}
       />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

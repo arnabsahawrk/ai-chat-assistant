@@ -6,14 +6,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.http import StreamingHttpResponse
+from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
+from django.conf import settings
 
-from .models import ChatSession, Message
+from .models import AIProviderUsage, ChatSession, Message
 from .serializers import (
     ChatSessionSerializer,
     ChatSessionDetailSerializer,
     MessageSerializer,
 )
 from .ai.router import stream_ai_response, build_messages, generate_title
+
+User = get_user_model()
 
 
 class ChatSessionListCreateView(generics.ListCreateAPIView):
@@ -232,3 +238,89 @@ class RegenerateMessageView(APIView):
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
+
+
+class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        User = get_user_model()
+        today = timezone.now().date()
+        last_7_days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+
+        # Totals
+        total_messages = Message.objects.count()
+        total_sessions = ChatSession.objects.count()
+        total_users = User.objects.count()
+
+        # Provider breakdown (assistant messages only)
+        from django.db.models import Count
+
+        provider_counts = (
+            Message.objects.filter(role=Message.Role.ASSISTANT)
+            .exclude(provider="")
+            .values("provider")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+        )
+        total_ai_messages = sum(p["count"] for p in provider_counts)
+        provider_breakdown = [
+            {
+                "provider": p["provider"],
+                "count": p["count"],
+                "percentage": (
+                    round(p["count"] / total_ai_messages * 100, 1)
+                    if total_ai_messages > 0
+                    else 0
+                ),
+            }
+            for p in provider_counts
+        ]
+
+        # Messages per day (last 7 days)
+        from django.db.models.functions import TruncDate
+
+        daily_counts = {
+            entry["day"].strftime("%Y-%m-%d"): entry["count"]
+            for entry in Message.objects.annotate(day=TruncDate("created_at"))
+            .filter(day__in=last_7_days)
+            .values("day")
+            .annotate(count=Count("id"))
+        }
+        messages_per_day = [
+            {
+                "date": d.strftime("%Y-%m-%d"),
+                "count": daily_counts.get(d.strftime("%Y-%m-%d"), 0),
+            }
+            for d in last_7_days
+        ]
+
+        # Today's provider quota usage
+        today_usage = []
+        limits = {
+            "groq": settings.AI_DAILY_LIMIT_GROQ,
+            "gemini": settings.AI_DAILY_LIMIT_GEMINI,
+            "mistral": settings.AI_DAILY_LIMIT_MISTRAL,
+        }
+        for provider_name, limit in limits.items():
+            usage = AIProviderUsage.objects.filter(
+                provider=provider_name, date=today
+            ).first()
+            today_usage.append(
+                {
+                    "provider": provider_name,
+                    "used": usage.request_count if usage else 0,
+                    "limit": limit,
+                }
+            )
+
+        return Response(
+            {
+                "total_messages": total_messages,
+                "total_sessions": total_sessions,
+                "total_users": total_users,
+                "provider_breakdown": provider_breakdown,
+                "messages_per_day": messages_per_day,
+                "today_usage": today_usage,
+            }
+        )
