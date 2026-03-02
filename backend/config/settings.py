@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "dj_rest_auth",
     "dj_rest_auth.registration",
     "django_ratelimit",
+    "drf_spectacular",
     "apps.accounts",
     "apps.chat",
     "apps.core",
@@ -170,6 +171,37 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "AI Chat Assistant API",
+    "DESCRIPTION": (
+        "REST API for AI Chat Assistant. Supports Google OAuth, JWT authentication, "
+        "multi-session chat with SSE streaming, multi-provider AI routing (Groq, Gemini, Mistral), "
+        "and usage analytics."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CONTACT": {
+        "name": "Arnab Saha",
+        "url": "https://links-arnabsahawrk.vercel.app/",
+    },
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+        "docExpansion": "none",
+    },
+    "COMPONENT_SPLIT_REQUEST": True,
+    "TAGS": [
+        {"name": "auth", "description": "Google OAuth and JWT token management"},
+        {"name": "sessions", "description": "Chat session management"},
+        {
+            "name": "messages",
+            "description": "Sending messages and streaming AI responses",
+        },
+        {"name": "dashboard", "description": "Platform-wide usage statistics"},
+    ],
 }
 
 # JWT

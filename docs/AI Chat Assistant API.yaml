@@ -1,0 +1,319 @@
+openapi: 3.0.3
+info:
+  title: AI Chat Assistant API
+  version: 1.0.0
+  description: REST API for AI Chat Assistant. Supports Google OAuth, JWT authentication,
+    multi-session chat with SSE streaming, multi-provider AI routing (Groq, Gemini,
+    Mistral), and usage analytics.
+  contact:
+    name: Arnab Saha
+    url: https://links-arnabsahawrk.vercel.app/
+paths:
+  /api/auth/google/:
+    post:
+      operationId: auth_google_create
+      description: Exchange a Google OAuth access token for a JWT pair. The frontend
+        obtains the Google access token via the implicit OAuth flow and sends it here.
+        The backend validates it with Google, creates or finds the user, and returns
+        JWT access and refresh tokens.
+      summary: Google OAuth login
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                  description: Google OAuth access token obtained from the frontend
+                    OAuth popup.
+              required:
+              - access_token
+            examples:
+              GoogleToken:
+                value:
+                  access_token: ya29.a0ARrdaM...
+                summary: Google token
+      responses:
+        '200':
+          description: Login successful. Returns JWT tokens and user details.
+        '400':
+          description: Bad request. The submitted data was invalid.
+  /api/auth/token/refresh/:
+    post:
+      operationId: auth_token_refresh_create
+      description: Exchange a valid refresh token for a new access token. Refresh
+        tokens expire after 7 days.
+      summary: Refresh access token
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access:
+                    type: string
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                description: Refresh token is invalid or expired.
+          description: ''
+  /api/chat/dashboard/:
+    get:
+      operationId: chat_dashboard_retrieve
+      description: Returns platform-wide usage statistics including total messages,
+        sessions, users, provider breakdown percentages, daily message counts for
+        the last 7 days, and today's quota usage per AI provider.
+      summary: Usage dashboard
+      tags:
+      - dashboard
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+  /api/chat/sessions/:
+    get:
+      operationId: chat_sessions_list
+      description: Returns all chat sessions for the authenticated user, ordered by
+        most recently updated.
+      summary: List chat sessions
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: List of sessions.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+    post:
+      operationId: chat_sessions_create
+      description: Create a new chat session. The title defaults to 'New Chat' and
+        is updated automatically after the first message.
+      summary: Create chat session
+      tags:
+      - sessions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          description: Session created.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+  /api/chat/sessions/{id}/:
+    get:
+      operationId: chat_sessions_retrieve
+      description: Retrieve a session along with its full message history.
+      summary: Get chat session
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: The ID of the chat session.
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: Session with messages.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+        '404':
+          description: The requested resource was not found.
+    delete:
+      operationId: chat_sessions_destroy
+      description: Permanently delete a session and all its messages.
+      summary: Delete chat session
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: pk
+        schema:
+          type: integer
+        description: The ID of the chat session.
+        required: true
+      tags:
+      - sessions
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: Session deleted.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+        '404':
+          description: The requested resource was not found.
+  /api/chat/sessions/{session_id}/messages/:
+    get:
+      operationId: chat_sessions_messages_list
+      description: Returns all messages in a session in chronological order.
+      summary: List messages
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: integer
+        description: The ID of the chat session.
+        required: true
+      tags:
+      - messages
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: List of messages.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+        '404':
+          description: The requested resource was not found.
+  /api/chat/sessions/{session_id}/messages/regenerate/:
+    post:
+      operationId: chat_sessions_messages_regenerate_create
+      description: Delete the last assistant message and regenerate a new response
+        from the last user message. Returns the same SSE stream format as `/send/`
+        but only emits `chunk`, `done`, and `error` events. Subject to the same rate
+        limit as `/send/`.
+      summary: Regenerate last response (SSE stream)
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: integer
+        description: The ID of the chat session.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: 'SSE stream. Content-Type: text/event-stream.'
+        '400':
+          description: Bad request. The submitted data was invalid.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+        '404':
+          description: The requested resource was not found.
+        '429':
+          description: Rate limit exceeded. You can send 30 messages per hour.
+  /api/chat/sessions/{session_id}/messages/send/:
+    post:
+      operationId: chat_sessions_messages_send_create
+      description: |-
+        Send a user message and receive the AI response as a Server-Sent Events stream. The response Content-Type is `text/event-stream`. Each event is a JSON object on a `data:` line.
+
+        **Event types:**
+        - `user_message` — fired immediately with the saved user message object
+        - `title` — fired after the first message only, contains the AI-generated session title
+        - `chunk` — one token of the AI response
+        - `done` — fired when streaming completes, contains the full saved assistant message object
+        - `error` — fired on failure, contains a `message` string
+
+        Abort the request at any time to stop generation.
+      summary: Send message (SSE stream)
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: integer
+        description: The ID of the chat session.
+        required: true
+      tags:
+      - messages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+              - content
+            examples:
+              UserMessage:
+                value:
+                  content: What are React hooks?
+                summary: User message
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: 'SSE stream. Content-Type: text/event-stream.'
+        '400':
+          description: Bad request. The submitted data was invalid.
+        '401':
+          description: Authentication credentials were not provided or are invalid.
+        '404':
+          description: The requested resource was not found.
+        '429':
+          description: Rate limit exceeded. You can send 30 messages per hour.
+components:
+  schemas:
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+tags:
+- name: auth
+  description: Google OAuth and JWT token management
+- name: sessions
+  description: Chat session management
+- name: messages
+  description: Sending messages and streaming AI responses
+- name: dashboard
+  description: Platform-wide usage statistics

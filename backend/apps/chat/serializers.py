@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import ChatSession, Message
 
 
@@ -25,11 +26,13 @@ class ChatSessionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "title", "created_at", "updated_at"]
 
-    def get_last_message(self, obj):
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_last_message(self, obj: ChatSession) -> str | None:
         last = obj.messages.last()
         return last.content[:80] if last else None
 
-    def get_message_count(self, obj):
+    @extend_schema_field(serializers.IntegerField(min_value=0))
+    def get_message_count(self, obj: ChatSession) -> int:
         return obj.messages.count()
 
 
