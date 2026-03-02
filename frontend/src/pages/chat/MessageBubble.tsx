@@ -38,7 +38,7 @@ const MessageBubble = ({ message, isStreaming = false, isLast = false, onRegener
   return (
     <div className="flex gap-3 items-start">
       <div className="w-7 h-7 rounded-full bg-surface-overlay border border-line flex items-center justify-center shrink-0 mt-0.5">
-        <Sparkles size={12} className="text-ink-secondary" />
+        <Sparkles size={12} className="text-accent" />
       </div>
       <div className="flex-1 min-w-0">
         <MarkdownRenderer content={message.content} isStreaming={isStreaming} />

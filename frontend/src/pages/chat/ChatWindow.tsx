@@ -110,7 +110,7 @@ const ChatWindow = ({
           <div className="flex flex-col items-center justify-center h-full gap-6 px-4 sm:px-8 py-12">
             <div className="flex flex-col items-center gap-3 text-center">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-surface-elevated border border-line-strong flex items-center justify-center">
-                <Sparkles size={20} className="text-ink-secondary" />
+                <Sparkles size={20} className="text-accent" />
               </div>
               <div>
                 <h1 className="text-ink-primary text-xl sm:text-2xl font-semibold tracking-tight">
@@ -169,7 +169,7 @@ const ChatWindow = ({
             {isStreaming && !streamingContent && (
               <div className="flex gap-3 items-start">
                 <div className="w-7 h-7 rounded-full bg-surface-overlay border border-line flex items-center justify-center shrink-0">
-                  <Sparkles size={12} className="text-ink-secondary" />
+                  <Sparkles size={12} className="text-accent" />
                 </div>
                 <div className="flex items-center gap-1.5 px-4 py-3 bg-surface-raised border border-line rounded-2xl rounded-tl-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-ink-muted animate-bounce [animation-delay:0ms]" />
