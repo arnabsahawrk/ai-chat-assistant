@@ -1,6 +1,7 @@
+import Skeleton from "@/components/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import type { ChatSession } from "@/types";
-import { BarChart2, Loader2, LogOut, MessageSquare, Trash2, X } from "lucide-react";
+import { BarChart2, LogOut, MessageSquare, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NewChatButton from "./NewChatButton";
 
@@ -51,8 +52,16 @@ const Sidebar = ({
         </p>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 size={16} className="text-ink-muted animate-spin" />
+          <div className="flex flex-col gap-1 px-1">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
+                <Skeleton className="w-3.5 h-3.5 rounded shrink-0" />
+                <Skeleton
+                  className="h-3.5 rounded flex-1"
+                  style={{ width: `${60 + (i % 3) * 15}%` }}
+                />
+              </div>
+            ))}
           </div>
         ) : sessions.length === 0 ? (
           <p className="text-ink-muted text-xs text-center py-8 px-3">No conversations yet</p>

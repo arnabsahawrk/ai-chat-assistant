@@ -1,6 +1,7 @@
+import Skeleton from "@/components/Skeleton";
 import { useAuth } from "@/context/AuthContext";
 import type { Message } from "@/types";
-import { ArrowUp, Loader2, Menu, Sparkles, Square } from "lucide-react";
+import { ArrowUp, Menu, Sparkles, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import MessageBubble from "./MessageBubble";
 
@@ -90,8 +91,19 @@ const ChatWindow = ({
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {isLoadingMessages ? (
-          <div className="flex items-center justify-center h-full">
-            <Loader2 size={20} className="text-ink-muted animate-spin" />
+          <div className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-4 w-full">
+            {/* Simulate a few message bubbles */}
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className={`flex gap-3 items-start ${i % 2 === 0 ? "justify-end" : ""}`}>
+                {i % 2 !== 0 && <Skeleton className="w-7 h-7 rounded-full shrink-0" />}
+                <div className="flex flex-col gap-2" style={{ width: `${40 + (i % 3) * 15}%` }}>
+                  <Skeleton className="h-4 rounded-xl w-full" />
+                  <Skeleton className="h-4 rounded-xl w-3/4" />
+                  {i % 3 === 0 && <Skeleton className="h-4 rounded-xl w-1/2" />}
+                </div>
+                {i % 2 === 0 && <Skeleton className="w-7 h-7 rounded-full shrink-0" />}
+              </div>
+            ))}
           </div>
         ) : isEmpty ? (
           /* Empty / welcome state */
