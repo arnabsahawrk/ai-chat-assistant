@@ -96,13 +96,13 @@ class SendMessageView(APIView):
                     title = generate_title(content)
                     session.title = title
                     session.save(update_fields=["title"])
-                yield (
-                    f"data: {json.dumps({'type': 'title', 'title': title, 'session_id': str(session.pk)})}\n\n".encode(
-                        "utf-8"
+                    yield (
+                        f"data: {json.dumps({'type': 'title', 'title': title, 'session_id': str(session.pk)})}\n\n".encode(
+                            "utf-8"
+                        )
                     )
-                )
             except Exception:
-                pass
+                pass  # title failed — stream continues normally
 
             try:
                 stream, provider_name, model_name = stream_ai_response(messages)
