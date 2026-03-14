@@ -100,7 +100,7 @@ const LoginPage = () => {
       <footer className="text-center text-xs text-ink-muted py-6 border-t border-line/50">
         © 2026 AI Chat Assistant — Designed & Developed by{" "}
         <a
-          href="https://links-arnabsahawrk.vercel.app/"
+          href="https://arnabsaha.vercel.app/"
           className="underline text-ink-secondary"
           target="_blank"
         >
