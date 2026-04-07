@@ -122,7 +122,7 @@ export function PWAInstallBanner() {
       {/* iOS "Add to Home Screen" guide modal */}
       {iosGuideOpen && (
         <div
-          className="fixed inset-0 z-[60] flex items-end justify-center"
+          className="fixed inset-0 z-60 flex items-end justify-center"
           style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
           onClick={() => setIosGuideOpen(false)}
         >
