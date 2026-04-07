@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/svg+xml" href="{% static 'ai.svg' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'ai.svg' %}" />
     <title>AI Chat Assistant — API</title>
     <style>
       *,
@@ -210,7 +210,7 @@
         <h1>AI Chat Assistant <span>/ API</span></h1>
       </div>
 
-      <p>REST API powering a multi-provider AI chat application. Supports Google OAuth, JWT authentication, real-time SSE streaming, and automatic failover across Groq, Gemini, and Mistral.</p>
+      <p>REST API powering a multi-provider AI chat application. Supports Google OAuth, JWT authentication, real-time SSE streaming, automatic failover across Groq, Gemini, and Mistral, and a Progressive Web App (PWA) frontend with offline support and install capability.</p>
 
       <div class="actions">
         <a class="btn btn-primary" href="/api/docs/">
@@ -247,6 +247,10 @@
         <div class="meta-item">
           <span class="meta-label">Streaming</span>
           <span class="meta-value">Server-Sent Events</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Frontend</span>
+          <span class="meta-value">PWA (Offline + Installable)</span>
         </div>
       </div>
     </main>
