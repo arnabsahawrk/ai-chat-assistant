@@ -60,6 +60,29 @@ Assistant messages are rendered as markdown with full support for:
 
 ---
 
+## Progressive Web App (PWA)
+
+The application is a fully compliant Progressive Web App. It can be installed on the user's device and continues to function when the network is unavailable.
+
+**Install prompt**
+On Android and desktop Chrome the browser's native install prompt is intercepted and surfaced as a polished slide-up banner at the bottom of the screen. The banner appears 3 seconds after the page loads to avoid disrupting the initial experience. Users can dismiss it; the dismissal is persisted in `sessionStorage` so it does not reappear in the same session.
+
+On iOS Safari the browser does not fire `beforeinstallprompt`. Instead a contextual "Add to Home Screen" guide is shown — a modal that walks the user through the three-step share-sheet process. The guide is only shown once per session.
+
+**Offline support**
+When the device loses connectivity a slim red banner slides down from the top of the screen. When the connection is restored the banner briefly turns green ("Back online") before disappearing. Cached assets continue to serve the app shell; API calls that fail while offline surface the normal error states already present in the chat UI.
+
+**Update flow**
+When a new version of the service worker is available a floating toast appears in the top-centre of the screen with a "Reload" button. The update is never applied silently — the user always initiates it. The toast can also be dismissed; the update will be applied on the next natural page reload.
+
+**App shortcuts**
+Long-pressing the home screen icon (Android) or using the context menu (desktop) exposes two shortcuts defined in the manifest: "New Chat" (navigates to `/chat`) and "Dashboard" (navigates to `/dashboard`).
+
+**First-install notice**
+The first time the service worker finishes installing and the app is ready for offline use, a brief "App ready for offline use" toast is shown. It auto-dismisses after 4 seconds.
+
+---
+
 ## Usage Dashboard
 
 A dashboard at `/dashboard` shows platform-wide statistics for all users:

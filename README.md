@@ -15,6 +15,9 @@ Django 6, Django REST Framework, dj-rest-auth, django-allauth, SimpleJWT, Postgr
 **Frontend**  
 React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui, React Router v7
 
+**PWA**  
+vite-plugin-pwa, Workbox (GenerateSW strategy), Web App Manifest, Service Worker
+
 **AI Providers**  
 Groq (Llama 3.3 70B) as primary, Google Gemini 2.0 Flash as fallback, Mistral Small as last resort
 
@@ -37,6 +40,7 @@ Backend on Render (free tier), Frontend on Vercel (free tier), Database on Neon 
 - **Regenerate response** — re-run the last prompt with full context
 - **Google OAuth** — profile picture and full name from Google, JWT issued by Django
 - **Responsive UI** — mobile-first design with a dark theme and design token system
+- **Progressive Web App** — installable on Android and iOS, offline-capable, automatic update prompts
 
 ---
 
@@ -54,11 +58,12 @@ ai-chat-assistant/
     └── src/
         ├── api/         # Axios client, auth and chat API calls
         ├── components/
+        │   └── pwa/     # PWA UI components (install banner, update prompt, offline banner)
         ├── context/     # AuthContext
-        ├── hooks/
+        ├── hooks/       # useChat, usePWAInstall, usePWAUpdate, useNetworkStatus
         ├── pages/
         │   ├── auth/    # LoginPage
-        │   └── chat/    # ChatPage, Sidebar, ChatWindow
+        │   └── chat/    # ChatPage, Sidebar, ChatWindow, MessageBubble
         ├── providers/   # AuthProvider, GoogleOAuthProvider
         ├── styles/      # theme.ts (design token reference)
         └── types/       # TypeScript interfaces
@@ -73,6 +78,7 @@ ai-chat-assistant/
 - All API base URLs centralized in `src/config/index.ts`; no hardcoded URLs in components
 - Provider quota state persisted in DB — failover survives server restarts
 - JWT refresh handled transparently by the Axios client
+- Service worker uses `registerType: "prompt"` — updates never apply silently; the user always confirms via `PWAUpdatePrompt`
 
 ---
 
