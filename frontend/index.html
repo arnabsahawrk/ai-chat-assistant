@@ -2,9 +2,56 @@
 <html lang="en" class="scroll-smooth focus:scroll-auto">
   <head>
     <meta charset="UTF-8" />
-   <link rel="icon" type="image/svg+xml" href="/ai.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- PWA Essential -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0c0c0e" />
+    <meta name="background-color" content="#0c0c0e" />
+
+    <!-- App Identity -->
     <title>AI Chat Assistant</title>
+    <meta name="description" content="A multi-provider AI chat assistant with real-time streaming, powered by Groq, Gemini, and Mistral." />
+    <meta name="application-name" content="AI Chat" />
+    <meta name="keywords" content="AI, chat, assistant, Groq, Gemini, Mistral, streaming" />
+    <meta name="author" content="Arnab Saha" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/ai.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+
+    <!-- Apple / iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AI Chat" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-startup-image" href="/icons/apple-touch-icon.png" />
+
+    <!-- Microsoft / Windows -->
+    <meta name="msapplication-TileColor" content="#0c0c0e" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <meta name="msapplication-config" content="none" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="AI Chat Assistant" />
+    <meta property="og:description" content="Multi-provider AI chat with real-time streaming — Groq, Gemini, and Mistral." />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="AI Chat Assistant" />
+    <meta name="twitter:description" content="Multi-provider AI chat with real-time streaming." />
+    <meta name="twitter:image" content="/icons/icon-512x512.png" />
+
+    <!-- Preconnect to API -->
+    <link rel="preconnect" href="https://ai-chat-assistant-4agm.onrender.com" />
+    <link rel="dns-prefetch" href="https://ai-chat-assistant-4agm.onrender.com" />
   </head>
   <body>
     <div id="root"></div>
